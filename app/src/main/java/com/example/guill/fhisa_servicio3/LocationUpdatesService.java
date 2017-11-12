@@ -12,6 +12,8 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.os.Binder;
 import android.os.Build;
@@ -265,6 +267,8 @@ public class LocationUpdatesService extends Service {
         PendingIntent activityPendingIntent = PendingIntent.getActivity(this, 0,
                 new Intent(this, MainActivity.class), 0);
 
+        Bitmap largeIcon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_fhisa_verde);
+
         return new NotificationCompat.Builder(this)
                 .addAction(R.drawable.ic_launch, getString(R.string.launch_activity),
                         activityPendingIntent)
@@ -274,7 +278,8 @@ public class LocationUpdatesService extends Service {
                 .setContentTitle(Utils.getLocationTitle(this))
                 .setOngoing(true)
                 .setPriority(Notification.PRIORITY_HIGH)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_fhisa)
+                .setLargeIcon(largeIcon)
                 .setTicker(text)
                 .setWhen(System.currentTimeMillis()).build();
     }
@@ -390,13 +395,13 @@ public class LocationUpdatesService extends Service {
         }
 
         FirebaseDatabase database = FirebaseDatabase.getInstance();
-        final DatabaseReference camionesRef = database.getReference("camiones");
+        final DatabaseReference camionesRef = database.getReference(Utils.FIREBASE_CAMIONES_REFERENCE);
 
         Posicion posicion = new Posicion(mLocation.getAltitude(), mLocation.getLatitude(), mLocation.getLongitude(),
                 mLocation.getSpeed(), mLocation.getTime());
 
         Camion camion = new Camion(id, posicion);
 
-        camionesRef.child(camion.getId()).child("posiciones").push().setValue(camion.getPosicion());
+        camionesRef.child(camion.getId()).child(Utils.FIREBASE_POSICIONES_REFERENCE).push().setValue(camion.getPosicion());
     }
 }

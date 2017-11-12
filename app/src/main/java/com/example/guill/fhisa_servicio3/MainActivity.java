@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
@@ -20,10 +21,12 @@ import android.support.design.widget.Snackbar;
 import android.support.multidex.MultiDex;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Toast;
 
 /**
@@ -123,7 +126,7 @@ public class MainActivity extends AppCompatActivity implements
         mRemoveLocationUpdatesButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mService.removeLocationUpdates();
+                alertDialogRemoveLocationUpdates();
             }
         });
 
@@ -296,5 +299,46 @@ public class MainActivity extends AppCompatActivity implements
             mRequestLocationUpdatesButton.setEnabled(true);
             mRemoveLocationUpdatesButton.setEnabled(false);
         }
+    }
+
+    private void alertDialogRemoveLocationUpdates(){
+        AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(MainActivity.this);
+        final View dialogView = getLayoutInflater().inflate(R.layout.alertdialog_password, null);
+        dialogBuilder.setView(dialogView);
+        final EditText edt = (EditText) dialogView.findViewById(R.id.etPassword);
+
+        dialogBuilder.setTitle(Utils.PASSWORD_REQUIRED);
+        dialogBuilder.setMessage(Utils.WRITE_PASSWORD);
+        dialogBuilder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int whichButton) {
+                String password=edt.getText().toString();
+                Log.i("Password", password);
+                if (password.equals(Utils.PASSWORD)) {
+                    Log.i("Password", "Contraseña correcta");
+                    mService.removeLocationUpdates();
+                    Toast.makeText(MainActivity.this, Utils.CORRECT_PASWORD,
+                            Toast.LENGTH_LONG).show();
+                    dialog.cancel();
+                }
+                else {
+                    AlertDialog.Builder alt_bld = new AlertDialog.Builder(MainActivity.this);
+                    alt_bld.setMessage(Utils.WRONG_PASSWORD)
+                            .setCancelable(false)
+                            .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int id) {
+                                    dialog.cancel();
+                                }
+                            });
+                    AlertDialog alt = alt_bld.create();
+                    alt.show();
+
+                }
+            }
+
+
+        });
+        AlertDialog b = dialogBuilder.create();
+        b.show();
+        //mService.removeLocationUpdates();
     }
 }

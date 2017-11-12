@@ -15,6 +15,14 @@ class Utils {
 
     static final String KEY_REQUESTING_LOCATION_UPDATES = "requesting_locaction_updates";
 
+    static final String FIREBASE_CAMIONES_REFERENCE = "camiones";
+    static final String FIREBASE_POSICIONES_REFERENCE = "posiciones";
+    static final String PASSWORD = "fhisahormigones";
+    static final String PASSWORD_REQUIRED = "Contraseña requerida";
+    static final String WRITE_PASSWORD = "Escriba la contraseña para dejar de ejecutar el servicio.";
+    static final String WRONG_PASSWORD = "La contraseña introducida es incorrecta.";
+    static final String CORRECT_PASWORD = "La contraseña es correcta, se ha dejado de ejecutar el servicio.";
+
     /**
      * Returns true if requesting location updates, otherwise returns false.
      *
