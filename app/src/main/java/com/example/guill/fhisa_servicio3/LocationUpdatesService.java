@@ -448,7 +448,8 @@ public class LocationUpdatesService extends Service {
         Log.i("CamionDentro", String.valueOf(camionDentro(posicion, listaAreas)));
 
         if (!camionDentro(posicion, listaAreas))
-            camionesRef.child(camion.getId()).child("ruta_actual").push().setValue(camion.getPosicion());
+            camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion());
+
     }
 
     public void guardarAreas() {
