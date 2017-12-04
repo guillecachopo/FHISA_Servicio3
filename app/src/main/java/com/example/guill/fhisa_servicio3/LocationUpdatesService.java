@@ -153,7 +153,7 @@ public class LocationUpdatesService extends Service {
             stopSelf();
         }
         // Tells the system to not try to recreate the service after it has been killed.
-        return START_NOT_STICKY;
+        return START_STICKY;
     }
 
     @Override
@@ -270,10 +270,10 @@ public class LocationUpdatesService extends Service {
         Bitmap largeIcon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_fhisa_verde);
 
         return new NotificationCompat.Builder(this)
-                .addAction(R.drawable.ic_launch, getString(R.string.launch_activity),
+           /*     .addAction(R.drawable.ic_launch, getString(R.string.launch_activity),
                         activityPendingIntent)
                 .addAction(R.drawable.ic_cancel, getString(R.string.remove_location_updates),
-                        servicePendingIntent)
+                        servicePendingIntent) */
                 .setContentText(text)
                 .setContentTitle(Utils.getLocationTitle(this))
                 .setOngoing(true)
