@@ -11,6 +11,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -21,6 +22,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.NotificationCompat;
@@ -28,6 +30,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
+import com.example.guill.fhisa_servicio3.Objetos.Area;
 import com.example.guill.fhisa_servicio3.Objetos.Camion;
 import com.example.guill.fhisa_servicio3.Objetos.Posicion;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -37,8 +40,17 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A bound and started service that is promoted to a foreground service when location updates have
@@ -117,6 +129,18 @@ public class LocationUpdatesService extends Service {
      */
     private Location mLocation;
 
+    SharedPreferences preferences;
+
+    ArrayList<Area> listaAreas;
+
+    final FirebaseDatabase database = FirebaseDatabase.getInstance();
+
+    final DatabaseReference areasRef = database.getReference("areas");
+
+    final DatabaseReference camionesRef = database.getReference(Utils.FIREBASE_CAMIONES_REFERENCE);
+
+
+
     public LocationUpdatesService() {
     }
 
@@ -144,6 +168,16 @@ public class LocationUpdatesService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.i(TAG, "Service started");
+
+    //    preferences = PreferenceManager.getDefaultSharedPreferences(this);
+        guardarAreas();
+    /*    String json = preferences.getString("jsonListaAreas", "");
+        Log.i("JSON", "JSON:" + json);
+        Gson gson = new Gson();
+        String jsonListaAreas = preferences.getString("jsonListaAreas", "");
+        Type type = new TypeToken<List<Area>>(){}.getType();
+        listaAreas = gson.fromJson(jsonListaAreas, type); */
+
         boolean startedFromNotification = intent.getBooleanExtra(EXTRA_STARTED_FROM_NOTIFICATION,
                 false);
 
@@ -152,7 +186,7 @@ public class LocationUpdatesService extends Service {
             removeLocationUpdates();
             stopSelf();
         }
-        // Tells the system to not try to recreate the service after it has been killed.
+        // Tells the system to try to recreate the service after it has been killed.
         return START_STICKY;
     }
 
@@ -202,6 +236,7 @@ public class LocationUpdatesService extends Service {
                 startForeground(NOTIFICATION_ID, getNotification());
             }
              */
+            guardarAreas();
             startForeground(NOTIFICATION_ID, getNotification());
         }
         return true; // Ensures onRebind() is called when a client re-binds.
@@ -312,6 +347,9 @@ public class LocationUpdatesService extends Service {
         mLocation = location;
 
         sendDataFirebase();
+        Log.i("ListaAreas", String.valueOf(listaAreas.size()));
+
+
 
         // Notify anyone listening for broadcasts about the new location.
         Intent intent = new Intent(ACTION_BROADCAST);
@@ -394,14 +432,79 @@ public class LocationUpdatesService extends Service {
             id = getIMEILow();
         }
 
-        FirebaseDatabase database = FirebaseDatabase.getInstance();
-        final DatabaseReference camionesRef = database.getReference(Utils.FIREBASE_CAMIONES_REFERENCE);
-
         Posicion posicion = new Posicion(mLocation.getAltitude(), mLocation.getLatitude(), mLocation.getLongitude(),
                 mLocation.getSpeed(), mLocation.getTime());
 
         Camion camion = new Camion(id, posicion);
 
         camionesRef.child(camion.getId()).child(Utils.FIREBASE_POSICIONES_REFERENCE).push().setValue(camion.getPosicion());
+
+        preferences = PreferenceManager.getDefaultSharedPreferences(this);
+        Gson gson = new Gson();
+        String jsonListaAreas = preferences.getString("jsonListaAreas", "");
+        Type type = new TypeToken<List<Area>>(){}.getType();
+        listaAreas = gson.fromJson(jsonListaAreas, type);
+
+        Log.i("CamionDentro", String.valueOf(camionDentro(posicion, listaAreas)));
+
+        if (!camionDentro(posicion, listaAreas))
+            camionesRef.child(camion.getId()).child("ruta_actual").push().setValue(camion.getPosicion());
+    }
+
+    public void guardarAreas() {
+
+        preferences = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.remove("jsonListaAreas");
+
+        areasRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                SharedPreferences.Editor editor = preferences.edit();
+                ArrayList<Area> listaAreas = new ArrayList<>();
+                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+                    snapshot.getValue().getClass();
+                    Area areaFirebase = snapshot.getValue(Area.class);
+                    listaAreas.add(areaFirebase);
+                }
+                Gson gson = new Gson();
+                String jsonListaAreas = gson.toJson(listaAreas);
+                editor.putString("jsonListaAreas", jsonListaAreas);
+                editor.apply();
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+    /**
+     * Método para comprobar si un camión se encuentra dentro alguna de las areas
+     **/
+    public boolean camionDentro(Posicion posicion, ArrayList<Area> listaAreas) {
+        ArrayList<Integer> d = new ArrayList<>();
+        boolean dentro = false;
+
+        for (int i=0; i < listaAreas.size(); i++) {
+            float[] distance = new float[2];
+            Location.distanceBetween(posicion.getLatitude(), posicion.getLongitude(),
+                    listaAreas.get(i).getLatitud(), listaAreas.get(i).getLongitud(), distance);
+
+            if (distance[0] <= listaAreas.get(i).getDistancia()) { //Camion dentro del circulo
+                // Inside The Circle
+                dentro = true;
+                d.add(1);
+            } else {
+                dentro = false;
+                d.add(0);
+            }
+        }
+
+        for (int i=0; i<d.size(); i++) {
+            if (d.get(i) == 1) dentro = true;
+        }
+        return dentro;
     }
 }
