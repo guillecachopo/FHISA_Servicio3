@@ -9,6 +9,7 @@ import android.location.Location;
 import android.preference.PreferenceManager;
 
 import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 class Utils {
@@ -57,4 +58,11 @@ class Utils {
         return context.getString(R.string.location_updated,
                 DateFormat.getDateTimeInstance().format(new Date()));
     }
+
+    static String getFechaHoraActual() {
+        DateFormat dateFormat = new SimpleDateFormat("ddMMyyy_HHmm");
+        Date date = new Date();
+        return dateFormat.format(date);
+    }
+
 }

@@ -437,19 +437,50 @@ public class LocationUpdatesService extends Service {
 
         Camion camion = new Camion(id, posicion);
 
-        camionesRef.child(camion.getId()).child(Utils.FIREBASE_POSICIONES_REFERENCE).push().setValue(camion.getPosicion());
+       // camionesRef.child(camion.getId()).child(Utils.FIREBASE_POSICIONES_REFERENCE).push().setValue(camion.getPosicion());
 
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences.Editor editor = preferences.edit();
+
         Gson gson = new Gson();
         String jsonListaAreas = preferences.getString("jsonListaAreas", "");
         Type type = new TypeToken<List<Area>>(){}.getType();
         listaAreas = gson.fromJson(jsonListaAreas, type);
 
+        int posRutaActual = preferences.getInt("posRutaActual", 0);
+        Log.i("posRutaActual", String.valueOf(posRutaActual));
+
         Log.i("CamionDentro", String.valueOf(camionDentro(posicion, listaAreas)));
 
-        if (!camionDentro(posicion, listaAreas))
+        if (!camionDentro(posicion, listaAreas) && posRutaActual == 0) { //Si sale por primera vez del area
+            //Falseo la primera posicion con el area de salida
+            Posicion posicionAreaSalida = areaProxima(camion.getPosicion(), listaAreas);
+            camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(posicionAreaSalida);
+            
             camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion());
+            editor.putInt("posRutaActual",posRutaActual+1);
+            //String nombreRuta = "ruta_" + Utils.getFechaHoraActual();
+            //editor.putString("nombreRuta", nombreRuta);
+            //camionesRef.child(camion.getId()).child("rutas").child("rutas_completadas").child(nombreRuta).push().setValue(camion.getPosicion());
+            editor.apply();
 
+        } else if (!camionDentro(posicion, listaAreas) && posRutaActual > 0) { //Si está fuera y ya lleva un tiempo
+
+            camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion());
+            editor.putInt("posRutaActual",posRutaActual+1);
+            editor.apply();
+
+        } else if (camionDentro(posicion, listaAreas) && posRutaActual > 0) { //Si hay mas de una pos. es pq el camión estaba en ruta y acaba de llegar
+
+            //String nombreRuta = preferences.getString("nombreRuta", "");
+            String nombreRuta = "ruta_" + Utils.getFechaHoraActual();
+            posRutaActual = 0;
+            editor.putInt("posRutaActual", posRutaActual);
+            camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion()); //Ponemos la ultima posicion dentro del area
+            moverRuta(camionesRef.child(camion.getId()).child("rutas").child("ruta_actual"),
+                    camionesRef.child(camion.getId()).child("rutas").child("rutas_completadas").child(nombreRuta));
+            editor.apply();
+        }
     }
 
     public void guardarAreas() {
@@ -481,6 +512,28 @@ public class LocationUpdatesService extends Service {
         });
     }
 
+
+    public Posicion areaProxima(Posicion posicion, ArrayList<Area> listaAreas) {
+        float distanciaMax = 1000;
+        Area areaProxima = null;
+
+        for (int i=0; i < listaAreas.size(); i++) {
+            float[] distance = new float[2];
+            Area areaActual = listaAreas.get(i);
+            Location.distanceBetween(posicion.getLatitude(), posicion.getLongitude(),
+                    areaActual.getLatitud(), areaActual.getLongitud(), distance);
+
+            Log.i("DistanciaArea", String.valueOf(distance[0]));
+
+            if (distance[0] > areaActual.getDistancia() || distance[0] < distanciaMax) {
+                areaProxima = areaActual;
+            }
+        }
+
+        Posicion posicionArea = new Posicion(0, areaProxima.getLatitud(), areaProxima.getLongitud(), 0, posicion.getTime());
+        return posicionArea;
+    }
+
     /**
      * Método para comprobar si un camión se encuentra dentro alguna de las areas
      **/
@@ -507,5 +560,27 @@ public class LocationUpdatesService extends Service {
             if (d.get(i) == 1) dentro = true;
         }
         return dentro;
+    }
+
+    public void moverRuta(DatabaseReference fromPath, final DatabaseReference toPath) {
+        fromPath.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(final DataSnapshot dataSnapshot) {
+                toPath.setValue(dataSnapshot.getValue(), new DatabaseReference.CompletionListener() {
+                    @Override
+                    public void onComplete(DatabaseError firebaseError, DatabaseReference firebase) {
+                        if (firebaseError != null) {
+                            System.out.println("Copy failed");
+                        } else {
+                            dataSnapshot.getRef().removeValue();
+                            System.out.println("Success");
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void onCancelled(DatabaseError firebaseError) {}
+        });
     }
 }
