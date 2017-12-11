@@ -347,7 +347,6 @@ public class LocationUpdatesService extends Service {
         mLocation = location;
 
         sendDataFirebase();
-        Log.i("ListaAreas", String.valueOf(listaAreas.size()));
 
 
 
@@ -446,40 +445,40 @@ public class LocationUpdatesService extends Service {
         String jsonListaAreas = preferences.getString("jsonListaAreas", "");
         Type type = new TypeToken<List<Area>>(){}.getType();
         listaAreas = gson.fromJson(jsonListaAreas, type);
-
         int posRutaActual = preferences.getInt("posRutaActual", 0);
         Log.i("posRutaActual", String.valueOf(posRutaActual));
 
-        Log.i("CamionDentro", String.valueOf(camionDentro(posicion, listaAreas)));
+        if (listaAreas == null) {
+            guardarAreas();
+        } else {
+            Log.i("CamionDentro", String.valueOf(camionDentro(posicion, listaAreas)));
 
-        if (!camionDentro(posicion, listaAreas) && posRutaActual == 0) { //Si sale por primera vez del area
-            //Falseo la primera posicion con el area de salida
-            Posicion posicionAreaSalida = areaProxima(camion.getPosicion(), listaAreas);
-            camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(posicionAreaSalida);
-            
-            camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion());
-            editor.putInt("posRutaActual",posRutaActual+1);
-            //String nombreRuta = "ruta_" + Utils.getFechaHoraActual();
-            //editor.putString("nombreRuta", nombreRuta);
-            //camionesRef.child(camion.getId()).child("rutas").child("rutas_completadas").child(nombreRuta).push().setValue(camion.getPosicion());
-            editor.apply();
+            if (!camionDentro(posicion, listaAreas) && posRutaActual == 0) { //Si sale por primera vez del area
+                //Falseo la primera posicion con el area de salida
+                Posicion posicionAreaSalida = areaProxima(camion.getPosicion(), listaAreas);
+                camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(posicionAreaSalida);
+                camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion());
+                editor.putInt("posRutaActual", posRutaActual + 1);
+                //String nombreRuta = "ruta_" + Utils.getFechaHoraActual();
+                //editor.putString("nombreRuta", nombreRuta);
+                //camionesRef.child(camion.getId()).child("rutas").child("rutas_completadas").child(nombreRuta).push().setValue(camion.getPosicion());
+                editor.apply();
 
-        } else if (!camionDentro(posicion, listaAreas) && posRutaActual > 0) { //Si está fuera y ya lleva un tiempo
+            } else if (!camionDentro(posicion, listaAreas) && posRutaActual > 0) { //Si está fuera y ya lleva un tiempo
+                camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion());
+                editor.putInt("posRutaActual", posRutaActual + 1);
+                editor.apply();
 
-            camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion());
-            editor.putInt("posRutaActual",posRutaActual+1);
-            editor.apply();
-
-        } else if (camionDentro(posicion, listaAreas) && posRutaActual > 0) { //Si hay mas de una pos. es pq el camión estaba en ruta y acaba de llegar
-
-            //String nombreRuta = preferences.getString("nombreRuta", "");
-            String nombreRuta = "ruta_" + Utils.getFechaHoraActual();
-            posRutaActual = 0;
-            editor.putInt("posRutaActual", posRutaActual);
-            camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion()); //Ponemos la ultima posicion dentro del area
-            moverRuta(camionesRef.child(camion.getId()).child("rutas").child("ruta_actual"),
-                    camionesRef.child(camion.getId()).child("rutas").child("rutas_completadas").child(nombreRuta));
-            editor.apply();
+            } else if (camionDentro(posicion, listaAreas) && posRutaActual > 0) { //Si hay mas de una pos. es pq el camión estaba en ruta y acaba de llegar
+                //String nombreRuta = preferences.getString("nombreRuta", "");
+                String nombreRuta = "ruta_" + Utils.getFechaHoraActual();
+                posRutaActual = 0;
+                editor.putInt("posRutaActual", posRutaActual);
+                camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion()); //Ponemos la ultima posicion dentro del area
+                moverRuta(camionesRef.child(camion.getId()).child("rutas").child("ruta_actual"),
+                        camionesRef.child(camion.getId()).child("rutas").child("rutas_completadas").child(nombreRuta));
+                editor.apply();
+            }
         }
     }
 
