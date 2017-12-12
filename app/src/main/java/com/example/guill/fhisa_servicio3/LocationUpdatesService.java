@@ -516,17 +516,19 @@ public class LocationUpdatesService extends Service {
         float distanciaMax = 1000;
         Area areaProxima = null;
 
+        float distanciaAnterior = 100000000;
+
         for (int i=0; i < listaAreas.size(); i++) {
             float[] distance = new float[2];
             Area areaActual = listaAreas.get(i);
             Location.distanceBetween(posicion.getLatitude(), posicion.getLongitude(),
                     areaActual.getLatitud(), areaActual.getLongitud(), distance);
 
-            Log.i("DistanciaArea", String.valueOf(distance[0]));
-
-            if (distance[0] > areaActual.getDistancia() && distance[0] < distanciaMax) {
+            if (distance[0] > areaActual.getDistancia() && distance[0] < distanciaAnterior) {
                 areaProxima = areaActual;
             }
+
+            distanciaAnterior = distance[0];
         }
 
         Posicion posicionArea = new Posicion(0, areaProxima.getLatitud(), areaProxima.getLongitud(), 0, posicion.getTime());
