@@ -524,7 +524,7 @@ public class LocationUpdatesService extends Service {
 
             Log.i("DistanciaArea", String.valueOf(distance[0]));
 
-            if (distance[0] > areaActual.getDistancia() || distance[0] < distanciaMax) {
+            if (distance[0] > areaActual.getDistancia() && distance[0] < distanciaMax) {
                 areaProxima = areaActual;
             }
         }
