@@ -32,6 +32,7 @@ import android.util.Log;
 
 import com.example.guill.fhisa_servicio3.Objetos.Area;
 import com.example.guill.fhisa_servicio3.Objetos.Camion;
+import com.example.guill.fhisa_servicio3.Objetos.Frecuencias;
 import com.example.guill.fhisa_servicio3.Objetos.Posicion;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -139,7 +140,7 @@ public class LocationUpdatesService extends Service {
 
     final DatabaseReference camionesRef = database.getReference(Utils.FIREBASE_CAMIONES_REFERENCE);
 
-
+    long FRECUENCIA_POSICIONES;
 
     public LocationUpdatesService() {
     }
@@ -328,6 +329,7 @@ public class LocationUpdatesService extends Service {
                             if (task.isSuccessful() && task.getResult() != null) {
                                 mLocation = task.getResult();
 
+                                getUpdateInterval();
                                 sendDataFirebase();
 
 
@@ -365,9 +367,18 @@ public class LocationUpdatesService extends Service {
      * Sets the location request parameters.
      */
     private void createLocationRequest() {
+        preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        FRECUENCIA_POSICIONES = preferences.getLong("frecuencia", 60*1000);
+
         mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(UPDATE_INTERVAL_IN_MILLISECONDS);
-        mLocationRequest.setFastestInterval(FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS);
+        //mLocationRequest.setInterval(UPDATE_INTERVAL_IN_MILLISECONDS);
+       // mLocationRequest.setFastestInterval(FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS);
+        mLocationRequest.setInterval(FRECUENCIA_POSICIONES);
+        if (FRECUENCIA_POSICIONES==60000) {
+            mLocationRequest.setFastestInterval(FRECUENCIA_POSICIONES/2);
+        } else {
+            mLocationRequest.setFastestInterval(FRECUENCIA_POSICIONES-20000);
+        }
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
     }
 
@@ -582,6 +593,58 @@ public class LocationUpdatesService extends Service {
 
             @Override
             public void onCancelled(DatabaseError firebaseError) {}
+        });
+    }
+
+    /**
+     * Devuelve el intervalo de actualización de posición definido por el usuario gestor
+     */
+    public void getUpdateInterval() {
+        //DEFAULT : UPDATE_INTERVAL_IN_MILLISECONDS
+        final FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference frecuenciasRef = database.getReference("frecuencias");
+
+        String imei;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            imei = getIMEI_O();
+        } else {
+            imei = getIMEILow();
+        }
+
+        frecuenciasRef.child(imei).addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                Log.i("Frecuencia", "Estoy dentro del DataSnapshot");
+
+                if (dataSnapshot.getChildrenCount() > 0) {
+                     Frecuencias frecuencias = dataSnapshot.getValue(Frecuencias.class);
+                    long frecuenciaPosiciones = Long.parseLong(frecuencias.getPosiciones())*60*1000;
+
+                    preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+                    SharedPreferences.Editor editor = preferences.edit();
+                    editor.putLong("frecuencia", frecuenciaPosiciones);
+                    editor.apply();
+
+                    Log.i("Frecuencia", String.valueOf(frecuenciaPosiciones));
+
+                    if (frecuenciaPosiciones!=60000) {
+                        mLocationRequest.setInterval(frecuenciaPosiciones);
+                        mLocationRequest.setFastestInterval(frecuenciaPosiciones-20000);
+                    } else { //Si es un minuto ponemos que se puedan enviar cada 30 segundos, si es posible.
+                        mLocationRequest.setInterval(frecuenciaPosiciones);
+                        mLocationRequest.setFastestInterval(frecuenciaPosiciones/2);
+
+                    }
+                    //removeLocationUpdates();
+                    requestLocationUpdates();
+                    }
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
         });
     }
 }
