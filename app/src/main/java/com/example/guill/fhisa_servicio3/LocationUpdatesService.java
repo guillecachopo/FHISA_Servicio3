@@ -11,11 +11,13 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.location.Location;
+import android.os.BatteryManager;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
@@ -139,6 +141,10 @@ public class LocationUpdatesService extends Service {
     final DatabaseReference areasRef = database.getReference("areas");
 
     final DatabaseReference camionesRef = database.getReference(Utils.FIREBASE_CAMIONES_REFERENCE);
+
+    final DatabaseReference frecuenciasRef = database.getReference("frecuencias");
+
+    final DatabaseReference bateriaRef = database.getReference("bateria");
 
     long FRECUENCIA_POSICIONES;
 
@@ -447,8 +453,6 @@ public class LocationUpdatesService extends Service {
 
         Camion camion = new Camion(id, posicion);
 
-       // camionesRef.child(camion.getId()).child(Utils.FIREBASE_POSICIONES_REFERENCE).push().setValue(camion.getPosicion());
-
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
         SharedPreferences.Editor editor = preferences.edit();
 
@@ -470,15 +474,14 @@ public class LocationUpdatesService extends Service {
                 camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(posicionAreaSalida);
                 camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion());
                 editor.putInt("posRutaActual", posRutaActual + 1);
-                //String nombreRuta = "ruta_" + Utils.getFechaHoraActual();
-                //editor.putString("nombreRuta", nombreRuta);
-                //camionesRef.child(camion.getId()).child("rutas").child("rutas_completadas").child(nombreRuta).push().setValue(camion.getPosicion());
                 editor.apply();
+                bateriaRef.child(camion.getId()).setValue(getBatteryPercentage(this));
 
             } else if (!camionDentro(posicion, listaAreas) && posRutaActual > 0) { //Si está fuera y ya lleva un tiempo
                 camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion());
                 editor.putInt("posRutaActual", posRutaActual + 1);
                 editor.apply();
+                bateriaRef.child(camion.getId()).setValue(getBatteryPercentage(this));
 
             } else if (camionDentro(posicion, listaAreas) && posRutaActual > 0) { //Si hay mas de una pos. es pq el camión estaba en ruta y acaba de llegar
                 //String nombreRuta = preferences.getString("nombreRuta", "");
@@ -489,6 +492,8 @@ public class LocationUpdatesService extends Service {
                 moverRuta(camionesRef.child(camion.getId()).child("rutas").child("ruta_actual"),
                         camionesRef.child(camion.getId()).child("rutas").child("rutas_completadas").child(nombreRuta));
                 editor.apply();
+                bateriaRef.child(camion.getId()).setValue(getBatteryPercentage(this));
+
             }
         }
     }
@@ -601,8 +606,6 @@ public class LocationUpdatesService extends Service {
      */
     public void getUpdateInterval() {
         //DEFAULT : UPDATE_INTERVAL_IN_MILLISECONDS
-        final FirebaseDatabase database = FirebaseDatabase.getInstance();
-        DatabaseReference frecuenciasRef = database.getReference("frecuencias");
 
         String imei;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -616,29 +619,31 @@ public class LocationUpdatesService extends Service {
             public void onDataChange(DataSnapshot dataSnapshot) {
                 Log.i("Frecuencia", "Estoy dentro del DataSnapshot");
 
-                if (dataSnapshot.getChildrenCount() > 0) {
-                     Frecuencias frecuencias = dataSnapshot.getValue(Frecuencias.class);
-                    long frecuenciaPosiciones = Long.parseLong(frecuencias.getPosiciones())*60*1000;
+                Frecuencias frecuencias = dataSnapshot.getValue(Frecuencias.class);
+                long frecuenciaPosiciones;
 
-                    preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                    SharedPreferences.Editor editor = preferences.edit();
-                    editor.putLong("frecuencia", frecuenciaPosiciones);
-                    editor.apply();
-
-                    Log.i("Frecuencia", String.valueOf(frecuenciaPosiciones));
-
-                    if (frecuenciaPosiciones!=60000) {
-                        mLocationRequest.setInterval(frecuenciaPosiciones);
-                        mLocationRequest.setFastestInterval(frecuenciaPosiciones-20000);
-                    } else { //Si es un minuto ponemos que se puedan enviar cada 30 segundos, si es posible.
-                        mLocationRequest.setInterval(frecuenciaPosiciones);
-                        mLocationRequest.setFastestInterval(frecuenciaPosiciones/2);
-
-                    }
-                    //removeLocationUpdates();
-                    requestLocationUpdates();
+                if(dataSnapshot.hasChild("posiciones")) {
+                    frecuenciaPosiciones = Long.parseLong(frecuencias.getPosiciones())*60*1000;
+                    } else {
+                        frecuenciaPosiciones = 60*1000;
                     }
 
+                preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+                SharedPreferences.Editor editor = preferences.edit();
+                editor.putLong("frecuencia", frecuenciaPosiciones);
+                editor.apply();
+
+                Log.i("Frecuencia", String.valueOf(frecuenciaPosiciones));
+
+                if (frecuenciaPosiciones!=60000) {
+                    mLocationRequest.setInterval(frecuenciaPosiciones);
+                    mLocationRequest.setFastestInterval(frecuenciaPosiciones-20000);
+                } else { //Si es un minuto ponemos que se puedan enviar cada 30 segundos, si es posible.
+                    mLocationRequest.setInterval(frecuenciaPosiciones);
+                    mLocationRequest.setFastestInterval(frecuenciaPosiciones/2);
+                }
+                //removeLocationUpdates();
+                requestLocationUpdates();
             }
 
             @Override
@@ -646,5 +651,18 @@ public class LocationUpdatesService extends Service {
 
             }
         });
+    }
+
+    public static int getBatteryPercentage(Context context) {
+
+        IntentFilter iFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        Intent batteryStatus = context.registerReceiver(null, iFilter);
+
+        int level = batteryStatus != null ? batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) : -1;
+        int scale = batteryStatus != null ? batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1) : -1;
+
+        float batteryPct = level / (float) scale;
+
+        return (int) (batteryPct * 100);
     }
 }
