@@ -177,7 +177,7 @@ public class LocationUpdatesService extends Service {
         Log.i(TAG, "Service started");
 
     //    preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        guardarAreas();
+        saveAreas();
     /*    String json = preferences.getString("jsonListaAreas", "");
         Log.i("JSON", "JSON:" + json);
         Gson gson = new Gson();
@@ -243,7 +243,7 @@ public class LocationUpdatesService extends Service {
                 startForeground(NOTIFICATION_ID, getNotification());
             }
              */
-            guardarAreas();
+            saveAreas();
             startForeground(NOTIFICATION_ID, getNotification());
         }
         return true; // Ensures onRebind() is called when a client re-binds.
@@ -464,7 +464,7 @@ public class LocationUpdatesService extends Service {
         Log.i("posRutaActual", String.valueOf(posRutaActual));
 
         if (listaAreas == null) {
-            guardarAreas();
+            saveAreas();
         } else {
             Log.i("CamionDentro", String.valueOf(camionDentro(posicion, listaAreas)));
 
@@ -498,7 +498,7 @@ public class LocationUpdatesService extends Service {
         }
     }
 
-    public void guardarAreas() {
+    public void saveAreas() {
 
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
         SharedPreferences.Editor editor = preferences.edit();
