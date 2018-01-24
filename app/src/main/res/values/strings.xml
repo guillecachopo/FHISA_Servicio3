@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">FHISA Servicio v1.3</string>
+    <string name="app_name">FHISA Servicio v2.0</string>
     <string name="launch_activity">Abrir actividad</string>
     <string name="location_unknown">Location unknown</string>
     <string name="location_updates_label">Location Updates</string>
