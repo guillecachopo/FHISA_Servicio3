@@ -540,13 +540,18 @@ public class LocationUpdatesService extends Service {
             Location.distanceBetween(posicion.getLatitude(), posicion.getLongitude(),
                     areaActual.getLatitud(), areaActual.getLongitud(), distance);
 
+            Log.i("AreaProxima", "Distancia de " + areaActual.getIdentificador() + ": " +distance[0]);
+
             if (distance[0] > areaActual.getDistancia() && distance[0] < distanciaAnterior) {
+                Log.i("AreaProxima", "Seteo AreaProxima");
                 areaProxima = areaActual;
+                distanciaAnterior = distance[0];
             }
 
-            distanciaAnterior = distance[0];
+            //distanciaAnterior = distance[0];
         }
 
+        Log.i("AreaProxima", "La mas proxima es: " + areaProxima.getIdentificador());
         Posicion posicionArea = new Posicion(0, areaProxima.getLatitud(), areaProxima.getLongitud(), 0, posicion.getTime());
         return posicionArea;
     }

@@ -29,6 +29,12 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
 /**
  * The only activity in this sample.
  *
@@ -126,7 +132,7 @@ public class MainActivity extends AppCompatActivity implements
         mRemoveLocationUpdatesButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                alertDialogRemoveLocationUpdates();
+                removeLocationUpdates();
             }
         });
 
@@ -301,7 +307,25 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    private void alertDialogRemoveLocationUpdates(){
+    private void removeLocationUpdates(){
+
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference passwordRef = database.getReference(Utils.FIREBASE_PASSWORD_REFERENCE);
+        passwordRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                final String password = String.valueOf(dataSnapshot.getValue());
+                alertDialogRemoveLocationUpdates(password);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+    private void alertDialogRemoveLocationUpdates(final String password) {
         AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(MainActivity.this);
         final View dialogView = getLayoutInflater().inflate(R.layout.alertdialog_password, null);
         dialogBuilder.setView(dialogView);
@@ -311,10 +335,8 @@ public class MainActivity extends AppCompatActivity implements
         dialogBuilder.setMessage(Utils.WRITE_PASSWORD);
         dialogBuilder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int whichButton) {
-                String password=edt.getText().toString();
-                Log.i("Password", password);
-                if (password.equals(Utils.PASSWORD)) {
-                    Log.i("Password", "Contraseña correcta");
+                String passwordIntr=edt.getText().toString();
+                if (passwordIntr.equals(password)) {
                     mService.removeLocationUpdates();
                     Toast.makeText(MainActivity.this, Utils.CORRECT_PASWORD,
                             Toast.LENGTH_LONG).show();
@@ -341,4 +363,5 @@ public class MainActivity extends AppCompatActivity implements
         b.show();
         //mService.removeLocationUpdates();
     }
+
 }

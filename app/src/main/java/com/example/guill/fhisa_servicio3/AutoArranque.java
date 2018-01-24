@@ -5,16 +5,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.location.Location;
-import android.preference.PreferenceManager;
-import android.util.Log;
 
 import com.example.guill.fhisa_servicio3.Objetos.Area;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
-import com.google.gson.Gson;
 
 import java.util.ArrayList;
 
@@ -40,13 +34,14 @@ public class AutoArranque extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-            //guardarAreas(context);
+            //saveAreas(context);
             context.startService(new Intent(context, MyIntentService.class));
 
         }
     }
 
-    public void guardarAreas(Context context) {
+    /*
+    public void saveAreas(Context context) {
 
         preferences = PreferenceManager.getDefaultSharedPreferences(context);
 
@@ -73,4 +68,5 @@ public class AutoArranque extends BroadcastReceiver {
             }
         });
     }
+    */
 }
