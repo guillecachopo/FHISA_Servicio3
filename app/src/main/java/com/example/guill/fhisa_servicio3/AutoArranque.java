@@ -6,7 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.location.Location;
 
-import com.example.guill.fhisa_servicio3.Objetos.Area;
+import com.example.guill.fhisa_servicio3.Objetos.BaseOperativa;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
@@ -25,7 +25,7 @@ public class AutoArranque extends BroadcastReceiver {
 
     SharedPreferences preferences;
 
-    ArrayList<Area> listaAreas;
+    ArrayList<BaseOperativa> listaBasesOperativas;
 
     final FirebaseDatabase database = FirebaseDatabase.getInstance();
 
@@ -49,17 +49,17 @@ public class AutoArranque extends BroadcastReceiver {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 SharedPreferences.Editor editor = preferences.edit();
-                ArrayList<Area> listaAreas = new ArrayList<>();
+                ArrayList<BaseOperativa> listaBasesOperativas = new ArrayList<>();
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
                     snapshot.getValue().getClass();
-                    Area areaFirebase = snapshot.getValue(Area.class);
-                    listaAreas.add(areaFirebase);
+                    BaseOperativa areaFirebase = snapshot.getValue(BaseOperativa.class);
+                    listaBasesOperativas.add(areaFirebase);
                 }
                 Gson gson = new Gson();
-                String jsonListaAreas = gson.toJson(listaAreas);
+                String jsonListaAreas = gson.toJson(listaBasesOperativas);
                 editor.putString("jsonListaAreas", jsonListaAreas);
                 editor.commit();
-                Log.i("CamionDentro", "ListaAreas: " + listaAreas.size());
+                Log.i("CamionDentro", "ListaAreas: " + listaBasesOperativas.size());
             }
 
             @Override

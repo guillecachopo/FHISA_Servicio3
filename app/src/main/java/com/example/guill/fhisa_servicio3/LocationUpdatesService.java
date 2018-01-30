@@ -32,7 +32,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
-import com.example.guill.fhisa_servicio3.Objetos.Area;
+import com.example.guill.fhisa_servicio3.Objetos.BaseOperativa;
 import com.example.guill.fhisa_servicio3.Objetos.Camion;
 import com.example.guill.fhisa_servicio3.Objetos.Frecuencias;
 import com.example.guill.fhisa_servicio3.Objetos.Posicion;
@@ -134,7 +134,7 @@ public class LocationUpdatesService extends Service {
 
     SharedPreferences preferences;
 
-    ArrayList<Area> listaAreas;
+    ArrayList<BaseOperativa> listaBasesOperativas;
 
     final FirebaseDatabase database = FirebaseDatabase.getInstance();
 
@@ -182,8 +182,8 @@ public class LocationUpdatesService extends Service {
         Log.i("JSON", "JSON:" + json);
         Gson gson = new Gson();
         String jsonListaAreas = preferences.getString("jsonListaAreas", "");
-        Type type = new TypeToken<List<Area>>(){}.getType();
-        listaAreas = gson.fromJson(jsonListaAreas, type); */
+        Type type = new TypeToken<List<BaseOperativa>>(){}.getType();
+        listaBasesOperativas = gson.fromJson(jsonListaAreas, type); */
 
         boolean startedFromNotification = intent.getBooleanExtra(EXTRA_STARTED_FROM_NOTIFICATION,
                 false);
@@ -421,7 +421,7 @@ public class LocationUpdatesService extends Service {
      * Método para obtener el IMEI del dispositivo en versiones recientes
      */
     @RequiresApi(api = Build.VERSION_CODES.O)
-    public String getIMEI_O() {
+    public String getImeiOreo() {
         TelephonyManager tm = (TelephonyManager) getSystemService(this.TELEPHONY_SERVICE);
         String imei = tm.getImei();
         return imei;
@@ -443,7 +443,7 @@ public class LocationUpdatesService extends Service {
     public void sendDataFirebase(){
         String id;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            id = getIMEI_O();
+            id = getImeiOreo();
         } else {
             id = getIMEILow();
         }
@@ -458,32 +458,32 @@ public class LocationUpdatesService extends Service {
 
         Gson gson = new Gson();
         String jsonListaAreas = preferences.getString("jsonListaAreas", "");
-        Type type = new TypeToken<List<Area>>(){}.getType();
-        listaAreas = gson.fromJson(jsonListaAreas, type);
+        Type type = new TypeToken<List<BaseOperativa>>(){}.getType();
+        listaBasesOperativas = gson.fromJson(jsonListaAreas, type);
         int posRutaActual = preferences.getInt("posRutaActual", 0);
         Log.i("posRutaActual", String.valueOf(posRutaActual));
 
-        if (listaAreas == null) {
+        if (listaBasesOperativas == null) {
             saveAreas();
         } else {
-            Log.i("CamionDentro", String.valueOf(camionDentro(posicion, listaAreas)));
+            Log.i("CamionDentro", String.valueOf(camionDentro(posicion, listaBasesOperativas)));
 
-            if (!camionDentro(posicion, listaAreas) && posRutaActual == 0) { //Si sale por primera vez del area
+            if (!camionDentro(posicion, listaBasesOperativas) && posRutaActual == 0) { //Si sale por primera vez del area
                 //Falseo la primera posicion con el area de salida
-                Posicion posicionAreaSalida = areaProxima(camion.getPosicion(), listaAreas);
+                Posicion posicionAreaSalida = areaProxima(camion.getPosicion(), listaBasesOperativas);
                 camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(posicionAreaSalida);
                 camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion());
                 editor.putInt("posRutaActual", posRutaActual + 1);
                 editor.apply();
                 bateriaRef.child(camion.getId()).setValue(getBatteryPercentage(this));
 
-            } else if (!camionDentro(posicion, listaAreas) && posRutaActual > 0) { //Si está fuera y ya lleva un tiempo
+            } else if (!camionDentro(posicion, listaBasesOperativas) && posRutaActual > 0) { //Si está fuera y ya lleva un tiempo
                 camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion());
                 editor.putInt("posRutaActual", posRutaActual + 1);
                 editor.apply();
                 bateriaRef.child(camion.getId()).setValue(getBatteryPercentage(this));
 
-            } else if (camionDentro(posicion, listaAreas) && posRutaActual > 0) { //Si hay mas de una pos. es pq el camión estaba en ruta y acaba de llegar
+            } else if (camionDentro(posicion, listaBasesOperativas) && posRutaActual > 0) { //Si hay mas de una pos. es pq el camión estaba en ruta y acaba de llegar
                 //String nombreRuta = preferences.getString("nombreRuta", "");
                 String nombreRuta = "ruta_" + Utils.getFechaHoraActual();
                 posRutaActual = 0;
@@ -508,14 +508,14 @@ public class LocationUpdatesService extends Service {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 SharedPreferences.Editor editor = preferences.edit();
-                ArrayList<Area> listaAreas = new ArrayList<>();
+                ArrayList<BaseOperativa> listaBasesOperativas = new ArrayList<>();
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
                     snapshot.getValue().getClass();
-                    Area areaFirebase = snapshot.getValue(Area.class);
-                    listaAreas.add(areaFirebase);
+                    BaseOperativa baseOperativaFirebase = snapshot.getValue(BaseOperativa.class);
+                    listaBasesOperativas.add(baseOperativaFirebase);
                 }
                 Gson gson = new Gson();
-                String jsonListaAreas = gson.toJson(listaAreas);
+                String jsonListaAreas = gson.toJson(listaBasesOperativas);
                 editor.putString("jsonListaAreas", jsonListaAreas);
                 editor.apply();
             }
@@ -528,47 +528,47 @@ public class LocationUpdatesService extends Service {
     }
 
 
-    public Posicion areaProxima(Posicion posicion, ArrayList<Area> listaAreas) {
+    public Posicion areaProxima(Posicion posicion, ArrayList<BaseOperativa> listaBasesOperativas) {
         float distanciaMax = 1000;
-        Area areaProxima = null;
+        BaseOperativa baseOperativaProxima = null;
 
         float distanciaAnterior = 100000000;
 
-        for (int i=0; i < listaAreas.size(); i++) {
+        for (int i = 0; i < listaBasesOperativas.size(); i++) {
             float[] distance = new float[2];
-            Area areaActual = listaAreas.get(i);
+            BaseOperativa baseOperativaActual = listaBasesOperativas.get(i);
             Location.distanceBetween(posicion.getLatitude(), posicion.getLongitude(),
-                    areaActual.getLatitud(), areaActual.getLongitud(), distance);
+                    baseOperativaActual.getLatitud(), baseOperativaActual.getLongitud(), distance);
 
-            Log.i("AreaProxima", "Distancia de " + areaActual.getIdentificador() + ": " +distance[0]);
+            Log.i("AreaProxima", "Distancia de " + baseOperativaActual.getIdentificador() + ": " +distance[0]);
 
-            if (distance[0] > areaActual.getDistancia() && distance[0] < distanciaAnterior) {
+            if (distance[0] > baseOperativaActual.getDistancia() && distance[0] < distanciaAnterior) {
                 Log.i("AreaProxima", "Seteo AreaProxima");
-                areaProxima = areaActual;
+                baseOperativaProxima = baseOperativaActual;
                 distanciaAnterior = distance[0];
             }
 
             //distanciaAnterior = distance[0];
         }
 
-        Log.i("AreaProxima", "La mas proxima es: " + areaProxima.getIdentificador());
-        Posicion posicionArea = new Posicion(0, areaProxima.getLatitud(), areaProxima.getLongitud(), 0, posicion.getTime());
+        Log.i("AreaProxima", "La mas proxima es: " + baseOperativaProxima.getIdentificador());
+        Posicion posicionArea = new Posicion(0, baseOperativaProxima.getLatitud(), baseOperativaProxima.getLongitud(), 0, posicion.getTime());
         return posicionArea;
     }
 
     /**
      * Método para comprobar si un camión se encuentra dentro alguna de las areas
      **/
-    public boolean camionDentro(Posicion posicion, ArrayList<Area> listaAreas) {
+    public boolean camionDentro(Posicion posicion, ArrayList<BaseOperativa> listaBasesOperativas) {
         ArrayList<Integer> d = new ArrayList<>();
         boolean dentro = false;
 
-        for (int i=0; i < listaAreas.size(); i++) {
+        for (int i = 0; i < listaBasesOperativas.size(); i++) {
             float[] distance = new float[2];
             Location.distanceBetween(posicion.getLatitude(), posicion.getLongitude(),
-                    listaAreas.get(i).getLatitud(), listaAreas.get(i).getLongitud(), distance);
+                    listaBasesOperativas.get(i).getLatitud(), listaBasesOperativas.get(i).getLongitud(), distance);
 
-            if (distance[0] <= listaAreas.get(i).getDistancia()) { //Camion dentro del circulo
+            if (distance[0] <= listaBasesOperativas.get(i).getDistancia()) { //Camion dentro del circulo
                 // Inside The Circle
                 dentro = true;
                 d.add(1);
@@ -614,7 +614,7 @@ public class LocationUpdatesService extends Service {
 
         String imei;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            imei = getIMEI_O();
+            imei = getImeiOreo();
         } else {
             imei = getIMEILow();
         }
