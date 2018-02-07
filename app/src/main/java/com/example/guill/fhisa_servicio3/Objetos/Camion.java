@@ -11,9 +11,9 @@ public class Camion {
 
     String id;
     Posicion posicion;
-    String telefono;
-
     List<Posicion> posicionesList;
+    long frecuenciaPosiciones;
+    long frecuenciaErrores;
 
     public Camion() {
     }
@@ -26,12 +26,6 @@ public class Camion {
     public Camion(String id, List<Posicion> posicionesList) {
         this.id = id;
         this.posicionesList = posicionesList;
-    }
-
-    public Camion(String id, List<Posicion> posicionesList, String telefono) {
-        this.id = id;
-        this.posicionesList = posicionesList;
-        this.telefono = telefono;
     }
 
     public Camion(Posicion posicion) {
@@ -67,5 +61,22 @@ public class Camion {
     public void setPosicionesList(List<Posicion> posicionesList) {
         this.posicionesList = posicionesList;
     }
+
+    public long getFrecuenciaPosiciones() {
+        return frecuenciaPosiciones;
+    }
+
+    public void setFrecuenciaPosiciones(long frecuenciaPosiciones) {
+        this.frecuenciaPosiciones = frecuenciaPosiciones;
+    }
+
+    public long getFrecuenciaErrores() {
+        return frecuenciaErrores;
+    }
+
+    public void setFrecuenciaErrores(long frecuenciaErrores) {
+        this.frecuenciaErrores = frecuenciaErrores;
+    }
+
 
 }

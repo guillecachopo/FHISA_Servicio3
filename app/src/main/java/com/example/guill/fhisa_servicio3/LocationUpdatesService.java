@@ -34,7 +34,6 @@ import android.util.Log;
 
 import com.example.guill.fhisa_servicio3.Objetos.BaseOperativa;
 import com.example.guill.fhisa_servicio3.Objetos.Camion;
-import com.example.guill.fhisa_servicio3.Objetos.Frecuencias;
 import com.example.guill.fhisa_servicio3.Objetos.Posicion;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -356,8 +355,6 @@ public class LocationUpdatesService extends Service {
 
         sendDataFirebase();
 
-
-
         // Notify anyone listening for broadcasts about the new location.
         Intent intent = new Intent(ACTION_BROADCAST);
         intent.putExtra(EXTRA_LOCATION, location);
@@ -475,13 +472,13 @@ public class LocationUpdatesService extends Service {
                 camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion());
                 editor.putInt("posRutaActual", posRutaActual + 1);
                 editor.apply();
-                bateriaRef.child(camion.getId()).setValue(getBatteryPercentage(this));
+                camionesRef.child(camion.getId()).child("bateria").setValue(getBatteryPercentage(this));
 
             } else if (!camionDentro(posicion, listaBasesOperativas) && posRutaActual > 0) { //Si está fuera y ya lleva un tiempo
                 camionesRef.child(camion.getId()).child("rutas").child("ruta_actual").push().setValue(camion.getPosicion());
                 editor.putInt("posRutaActual", posRutaActual + 1);
                 editor.apply();
-                bateriaRef.child(camion.getId()).setValue(getBatteryPercentage(this));
+                camionesRef.child(camion.getId()).child("bateria").setValue(getBatteryPercentage(this));
 
             } else if (camionDentro(posicion, listaBasesOperativas) && posRutaActual > 0) { //Si hay mas de una pos. es pq el camión estaba en ruta y acaba de llegar
                 //String nombreRuta = preferences.getString("nombreRuta", "");
@@ -492,7 +489,7 @@ public class LocationUpdatesService extends Service {
                 moverRuta(camionesRef.child(camion.getId()).child("rutas").child("ruta_actual"),
                         camionesRef.child(camion.getId()).child("rutas").child("rutas_completadas").child(nombreRuta));
                 editor.apply();
-                bateriaRef.child(camion.getId()).setValue(getBatteryPercentage(this));
+                camionesRef.child(camion.getId()).child("bateria").setValue(getBatteryPercentage(this));
 
             }
         }
@@ -619,19 +616,19 @@ public class LocationUpdatesService extends Service {
             imei = getIMEILow();
         }
 
-        frecuenciasRef.child(imei).addValueEventListener(new ValueEventListener() {
+        camionesRef.child(imei).child("frecuencia_posiciones").addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 Log.i("Frecuencia", "Estoy dentro del DataSnapshot");
 
-                Frecuencias frecuencias = dataSnapshot.getValue(Frecuencias.class);
                 long frecuenciaPosiciones;
 
-                if(dataSnapshot.hasChild("posiciones")) {
-                    frecuenciaPosiciones = Long.parseLong(frecuencias.getPosiciones())*60*1000;
-                    } else {
-                        frecuenciaPosiciones = 60*1000;
-                    }
+                if (dataSnapshot.exists()) {
+                    frecuenciaPosiciones = (long) dataSnapshot.getValue()*60*1000;
+                    Log.i("frecuenciaposiciones", "Val:" + frecuenciaPosiciones);
+                } else {
+                    frecuenciaPosiciones = 60*1000;
+                }
 
                 preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
                 SharedPreferences.Editor editor = preferences.edit();
